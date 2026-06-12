@@ -125,7 +125,8 @@ export function Component(): JSX.Element {
   const [editingItem, setEditingItem] = useState<IMasterDataItem | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const currentCategory = CATEGORIES[activeTab].key;
+  const activeCategory = CATEGORIES[activeTab];
+  const currentCategory = activeCategory?.key ?? 'services';
 
   // Fetch master data
   const {
@@ -369,7 +370,7 @@ export function Component(): JSX.Element {
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           {editingItem ? 'Edit Item' : 'Create Item'} —{' '}
-          {CATEGORIES[activeTab].label}
+          {activeCategory?.label ?? 'Item'}
         </DialogTitle>
         <DialogContent>
           <Box

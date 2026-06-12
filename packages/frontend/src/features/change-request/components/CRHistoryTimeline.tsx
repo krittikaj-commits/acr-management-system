@@ -1,12 +1,11 @@
-import Timeline from '@mui/lab/Timeline';
-import TimelineItem from '@mui/lab/TimelineItem';
-import TimelineSeparator from '@mui/lab/TimelineSeparator';
-import TimelineConnector from '@mui/lab/TimelineConnector';
-import TimelineContent from '@mui/lab/TimelineContent';
-import TimelineDot from '@mui/lab/TimelineDot';
-import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import SendIcon from '@mui/icons-material/Send';
@@ -38,10 +37,10 @@ function getActionIcon(action: string): JSX.Element {
   }
 }
 
-/** Map audit action to dot color */
-function getDotColor(
+/** Map audit action to chip color */
+function getChipColor(
   action: string,
-): 'success' | 'error' | 'info' | 'primary' | 'warning' | 'grey' {
+): 'success' | 'error' | 'info' | 'primary' | 'warning' | 'default' {
   switch (action) {
     case 'create':
       return 'info';
@@ -56,7 +55,7 @@ function getDotColor(
     case 'update':
       return 'warning';
     default:
-      return 'grey';
+      return 'default';
   }
 }
 
@@ -84,7 +83,7 @@ interface CRHistoryTimelineProps {
 }
 
 /**
- * Renders a vertical timeline of CR audit history entries.
+ * Renders a vertical list of CR audit history entries.
  */
 export function CRHistoryTimeline({
   entries,
@@ -99,63 +98,65 @@ export function CRHistoryTimeline({
   }
 
   return (
-    <Timeline position={compact ? 'right' : 'alternate'} sx={{ p: 0 }}>
+    <List sx={{ p: 0, width: '100%' }}>
       {entries.map((entry, index) => (
-        <TimelineItem key={entry.id}>
-          {!compact && (
-            <TimelineOppositeContent
-              sx={{ m: 'auto 0' }}
-              variant="body2"
-              color="text.secondary"
-            >
-              {new Date(entry.createdAt).toLocaleDateString('th-TH', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </TimelineOppositeContent>
-          )}
-          <TimelineSeparator>
-            {index > 0 && <TimelineConnector />}
-            <TimelineDot color={getDotColor(entry.action)} variant="filled">
+        <Box key={entry.id}>
+          <ListItem alignItems="flex-start" sx={{ px: compact ? 1 : 2 }}>
+            <ListItemIcon sx={{ minWidth: 40, mt: 0.5 }}>
               {getActionIcon(entry.action)}
-            </TimelineDot>
-            {index < entries.length - 1 && <TimelineConnector />}
-          </TimelineSeparator>
-          <TimelineContent sx={{ py: '12px', px: 2 }}>
-            <Typography variant="subtitle2" component="span">
-              {formatAction(entry.action)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {entry.userEmail}
-            </Typography>
-            {compact && (
-              <Typography variant="caption" color="text.secondary">
-                {new Date(entry.createdAt).toLocaleDateString('th-TH', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Typography>
-            )}
-            {entry.newValue && (
-              <Box sx={{ mt: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {Object.keys(entry.newValue).length <= 3
-                    ? Object.entries(entry.newValue)
-                        .map(([key, val]) => `${key}: ${val}`)
-                        .join(', ')
-                    : `${Object.keys(entry.newValue).length} fields changed`}
-                </Typography>
-              </Box>
-            )}
-          </TimelineContent>
-        </TimelineItem>
+            </ListItemIcon>
+            <ListItemText
+              primary={
+                <Box className="flex items-center gap-2 flex-wrap">
+                  <Chip
+                    label={formatAction(entry.action)}
+                    color={getChipColor(entry.action)}
+                    size="small"
+                    variant="outlined"
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    {entry.userEmail}
+                  </Typography>
+                </Box>
+              }
+              secondary={
+                <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    {new Date(entry.createdAt).toLocaleDateString('th-TH', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Typography>
+                  {entry.newValue && (
+                    <Typography
+                      component="span"
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 0.25 }}
+                    >
+                      {Object.keys(entry.newValue).length <= 3
+                        ? Object.entries(entry.newValue)
+                            .map(([key, val]) => `${key}: ${val}`)
+                            .join(', ')
+                        : `${Object.keys(entry.newValue).length} fields changed`}
+                    </Typography>
+                  )}
+                </Box>
+              }
+            />
+          </ListItem>
+          {index < entries.length - 1 && (
+            <Divider variant="inset" component="li" />
+          )}
+        </Box>
       ))}
-    </Timeline>
+    </List>
   );
 }

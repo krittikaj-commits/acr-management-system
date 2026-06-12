@@ -171,6 +171,8 @@ export function FileUpload({
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
+      if (!file) continue;
+
       const validationError = validateFile(file);
 
       if (validationError) {
@@ -195,9 +197,9 @@ export function FileUpload({
 
     // Start uploading each file
     for (let i = 0; i < newEntries.length; i++) {
-      const file = selectedFiles[i];
-      const entry = newEntries[i];
-      if (file && entry) {
+      const file: File | undefined = selectedFiles[i];
+      const entry: IUploadedFile | undefined = newEntries[i];
+      if (file !== undefined && entry !== undefined) {
         uploadFile(file, entry);
       }
     }
