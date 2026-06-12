@@ -1,11 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { DEMO_MODE } from '@/services/mock-data';
 
 /**
  * Checks if user is authenticated. Redirects to login if not.
- *
- * TODO: Replace `isAuthenticated` logic with actual auth store (Zustand)
- * once the auth module is implemented.
+ * In DEMO_MODE, always allows access if a token is present.
  */
 
 interface ProtectedRouteProps {
@@ -13,13 +12,14 @@ interface ProtectedRouteProps {
 }
 
 /**
- * Temporary auth check — always returns true until auth store is connected.
- * This will be replaced with the real Zustand auth store in a later task.
+ * Auth check — checks localStorage for access token.
+ * In DEMO_MODE, presence of any token (including the mock token) is sufficient.
  */
 function useIsAuthenticated(): boolean {
-  // TODO: Connect to Zustand auth store
-  // const { accessToken } = useAuthStore();
-  // return !!accessToken;
+  if (DEMO_MODE) {
+    const token = localStorage.getItem('accessToken');
+    return !!token;
+  }
   const token = localStorage.getItem('accessToken');
   return !!token;
 }

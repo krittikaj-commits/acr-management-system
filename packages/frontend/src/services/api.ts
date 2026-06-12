@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { DEMO_MODE, getMockResponse } from '@/services/mock-data';
 
 /**
  * Axios API instance with auth token injection and 401 token refresh interceptor.
@@ -122,6 +123,41 @@ function clearAuthStorage(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
+}
+
+/**
+ * Demo mode interceptor: catches network errors and returns mock data
+ * so the app can be fully navigated without a real backend.
+ */
+if (DEMO_MODE) {
+  api.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError) => {
+      // Only intercept network errors or 4xx/5xx when backend is unreachable
+      const isNetworkError = !error.response;
+      const isServerError = error.response && error.response.status >= 500;
+      const is404 = error.response && error.response.status === 404;
+
+      if (isNetworkError || isServerError || is404) {
+        const url = error.config?.url;
+        const method = error.config?.method;
+        const mockData = getMockResponse(url, method);
+
+        if (mockData) {
+          // Return a fake successful response
+          return Promise.resolve({
+            data: mockData,
+            status: 200,
+            statusText: 'OK (Demo)',
+            headers: {},
+            config: error.config!,
+          });
+        }
+      }
+
+      return Promise.reject(error);
+    },
+  );
 }
 
 export default api;

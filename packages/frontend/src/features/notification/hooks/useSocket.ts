@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 import { notificationKeys } from './useNotifications';
+import { DEMO_MODE } from '@/services/mock-data';
 
 const SOCKET_URL = import.meta.env.VITE_WS_URL ?? '';
 
@@ -9,12 +10,18 @@ const SOCKET_URL = import.meta.env.VITE_WS_URL ?? '';
  * Socket.io client hook for real-time notifications.
  * Connects on mount, disconnects on unmount.
  * Invalidates notification queries when a new notification arrives.
+ * In DEMO_MODE, does nothing (no backend to connect to).
  */
 export function useNotificationSocket(): void {
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    // Skip socket connection in demo mode
+    if (DEMO_MODE) {
+      return;
+    }
+
     const accessToken = localStorage.getItem('accessToken');
 
     if (!accessToken) {

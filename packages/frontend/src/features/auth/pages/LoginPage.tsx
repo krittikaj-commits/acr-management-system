@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Avatar from '@mui/material/Avatar';
 import { useAuth } from '@/hooks/useAuth';
+import { DEMO_MODE } from '@/services/mock-data';
 import { AxiosError } from 'axios';
 
 /**
@@ -36,6 +37,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 /**
  * LoginPage — Email + password form.
  * Submits to POST /auth/login, stores tokens, redirects to /app/dashboard.
+ * In DEMO_MODE, any credentials (or empty) will bypass auth and go to dashboard.
  */
 function LoginPage(): JSX.Element {
   const { login } = useAuth();
@@ -46,17 +48,17 @@ function LoginPage(): JSX.Element {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: DEMO_MODE ? undefined : zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: DEMO_MODE ? 'admin@dits.co.th' : '',
+      password: DEMO_MODE ? 'demo123' : '',
     },
   });
 
   const onSubmit = async (data: LoginFormValues): Promise<void> => {
     setServerError(null);
     try {
-      await login(data.email, data.password);
+      await login(data.email || 'admin@dits.co.th', data.password || 'demo123');
     } catch (error) {
       if (error instanceof AxiosError && error.response?.data?.error?.message) {
         setServerError(error.response.data.error.message);
@@ -99,6 +101,12 @@ function LoginPage(): JSX.Element {
           {serverError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {serverError}
+            </Alert>
+          )}
+
+          {DEMO_MODE && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Demo Mode — Click "Sign In" with any credentials to enter the system.
             </Alert>
           )}
 

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/services/api';
+import { DEMO_MODE, MOCK_USER, MOCK_ACCESS_TOKEN, MOCK_REFRESH_TOKEN } from '@/services/mock-data';
 import type {
   ILoginResponse,
   IRefreshTokenResponse,
@@ -43,6 +44,14 @@ export function useAuth(): UseAuthReturn {
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
+      if (DEMO_MODE) {
+        // Demo mode: bypass API, set mock user immediately
+        setTokens(MOCK_ACCESS_TOKEN, MOCK_REFRESH_TOKEN);
+        setUser(MOCK_USER);
+        navigate('/app/dashboard');
+        return;
+      }
+
       const response = await api.post<ILoginResponse>('/auth/login', {
         email,
         password,
