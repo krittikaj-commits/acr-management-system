@@ -43,7 +43,7 @@ export function useAuth(): UseAuthReturn {
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
-      const response = await api.post<ILoginResponse['data']>('/auth/login', {
+      const response = await api.post<ILoginResponse>('/auth/login', {
         email,
         password,
       });
@@ -69,7 +69,7 @@ export function useAuth(): UseAuthReturn {
       return;
     }
 
-    const response = await api.post<IRefreshTokenResponse['data']>(
+    const response = await api.post<IRefreshTokenResponse>(
       '/auth/refresh',
       { refreshToken: storedRefreshToken },
     );
@@ -79,7 +79,7 @@ export function useAuth(): UseAuthReturn {
   }, [storedRefreshToken, clearAuth, navigate, setTokens]);
 
   const fetchCurrentUser = useCallback(async (): Promise<IUser> => {
-    const response = await api.get<ICurrentUserResponse['data']>('/auth/me');
+    const response = await api.get<ICurrentUserResponse>('/auth/me');
     const user = response.data.data;
     setUser(user);
     return user;

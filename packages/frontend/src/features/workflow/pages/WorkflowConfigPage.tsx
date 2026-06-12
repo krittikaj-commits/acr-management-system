@@ -248,10 +248,11 @@ export function Component(): JSX.Element {
   // Mutations
   const addStepMutation = useMutation({
     mutationFn: (data: StepFormValues) => {
+      const { requiredFields, ...rest } = data;
       const payload = {
-        ...data,
-        requiredFields: data.requiredFields
-          ? data.requiredFields.split(',').map((f) => f.trim())
+        ...rest,
+        requiredFields: requiredFields
+          ? requiredFields.split(',').map((f) => f.trim())
           : [],
       };
       return addWorkflowStep(selectedWorkflow!.id, payload);
@@ -265,10 +266,11 @@ export function Component(): JSX.Element {
 
   const updateStepMutation = useMutation({
     mutationFn: (data: StepFormValues) => {
+      const { requiredFields, ...rest } = data;
       const payload = {
-        ...data,
-        requiredFields: data.requiredFields
-          ? data.requiredFields.split(',').map((f) => f.trim())
+        ...rest,
+        requiredFields: requiredFields
+          ? requiredFields.split(',').map((f) => f.trim())
           : [],
       };
       return updateWorkflowStep(
