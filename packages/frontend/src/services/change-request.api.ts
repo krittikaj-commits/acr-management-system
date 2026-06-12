@@ -176,3 +176,16 @@ export async function verifyTrackingToken(
   );
   return response.data.data;
 }
+
+/**
+ * Create a new Change Request (anonymous or authenticated).
+ */
+export async function createChangeRequest(
+  data: Record<string, unknown>,
+): Promise<ICRDetail> {
+  const response = await api.post<{ data: ICRDetail }>(
+    '/change-requests',
+    data,
+  );
+  return response.data.data;
+}
