@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+.git
+.gitignore
+.vscode
+coverage
+test
+*.test.ts
+*.spec.ts
+jest.config.ts
+jest.*.config.ts
+tsconfig.build.json
+README.md
+.DS_Store

@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "enabled": true,
+  "name": "Test coverage maintainer",
+  "description": "This hook ensures test coverage remains high as code evolves.",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "When a source file is modified:\n1. Identify new or modified functions and methods\n2. Check if corresponding tests exist and cover the changes\n3. If coverage is missing, generate test cases for the new code\n4. Run the tests to verify they pass\n5. Update coverage reports\n"
+  }
+}

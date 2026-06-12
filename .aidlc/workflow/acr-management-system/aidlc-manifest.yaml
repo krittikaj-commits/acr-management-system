@@ -1,0 +1,56 @@
+version: "2.1"
+feature: "acr-management-system"
+language: "th"
+platform: "kiro"
+created: "2026-06-09T00:00:00Z"
+updated: "2026-06-09T00:11:00Z"
+state:
+  status: "active"
+  sharedPhases: [context, requirements, design, tasks]
+  mode: comprehensive
+  foundationSkipped: false
+artifacts:
+  context:
+    status: "approved"
+    timestamp: "2026-06-09T00:00:00Z"
+    files: [context.md]
+  requirements:
+    status: "approved"
+    timestamp: "2026-06-09T00:03:00Z"
+    files: [requirements.md, personas.md]
+  design:
+    status: "approved"
+    timestamp: "2026-06-09T00:08:00Z"
+    files: [design.md, design/components.md, design/data-model.md, design/api-spec.md, design/integration.md, design/implementation.md, design/nfr.md, design/correctness.md]
+  tasks:
+    status: "approved"
+    timestamp: "2026-06-09T00:11:00Z"
+    files: [tasks.md]
+context-summary:
+  type: "Greenfield"
+  stack: "TypeScript / React + Tailwind + MUI / Node.js / Microsoft SQL Server Express"
+  architecture: "Web SPA + backend API on AWS (ECS, S3/CloudFront, RDS); Terraform IaC"
+  feature: "ACR Management System — end-to-end change request management (create, review, approve, implement, verify, close) supporting Normal and Emergency Change"
+  impact: "New standalone product"
+  complexity: "High"
+  recommendations: { personas: true, units: true, nfr: true }
+decisions:
+  requirements:
+    scope: "Full product (FR-001 to FR-028, NFR-001 to NFR-014)"
+    userTypes: "All 8 roles"
+    authMode: "Anonymous for Requester/Approver Request; Login for IT/Admin"
+    changeTypes: "Normal + Emergency (post-approval)"
+    workflow: "Fully configurable workflow engine"
+    integrations: "Email MS365 + File Storage first; AD Phase 2; Ticketing roadmap"
+    auditLevel: "Full immutable audit"
+    personas: "Yes - core roles (Requester, IT Reviewer, Approver, Admin)"
+    notifications: "Email + In-app"
+    reporting: "Basic export + Dashboard"
+    mobile: "Responsive web only"
+    dataRetention: "Keep forever (CR data + audit log)"
+steering:
+  updatedBy:
+    product: [context, requirements]
+    tech: [context, design]
+    structure: [context, design]
+units: []

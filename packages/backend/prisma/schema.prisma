@@ -1,0 +1,280 @@
+// Prisma Schema — ACR Management System
+// Database: Microsoft SQL Server Express
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique @db.NVarChar(255)
+  passwordHash String   @db.NVarChar(255)
+  firstName    String   @db.NVarChar(100)
+  lastName     String   @db.NVarChar(100)
+  position     String?  @db.NVarChar(100)
+  roleId       String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  role                  Role                 @relation(fields: [roleId], references: [id])
+  createdChangeRequests ChangeRequest[]      @relation("RequesterRelation")
+  assignedChangeRequests ChangeRequest[]     @relation("AssignedToRelation")
+  approvals             Approval[]
+  attachments           Attachment[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  workflowDefinitions   WorkflowDefinition[]
+
+  @@index([roleId])
+  @@index([isActive])
+}
+
+// ─── Role ─────────────────────────────────────────────────────────────────────
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.NVarChar(50)
+  permissions Json
+  createdAt   DateTime @default(now())
+
+  // Relations
+  users User[]
+}
+
+// ─── ChangeRequest ────────────────────────────────────────────────────────────
+
+model ChangeRequest {
+  id                    String    @id @default(uuid())
+  crNumber              String    @unique @db.NVarChar(20)
+  requesterId           String?
+  assignedToId          String?
+  workflowInstanceId    String?
+  changeType            String    @db.NVarChar(20)
+  impactLevel           String    @db.NVarChar(20)
+  affectedService       String    @db.NVarChar(100)
+  description           String    @db.NVarChar(Max)
+  justification         String?   @db.NVarChar(Max)
+  requesterName         String    @db.NVarChar(200)
+  requesterEmail        String    @db.NVarChar(255)
+  requesterDepartment   String?   @db.NVarChar(100)
+  approverRequestEmail  String?   @db.NVarChar(255)
+  impactAnalysis        String?   @db.NVarChar(Max)
+  riskAssessment        String?   @db.NVarChar(Max)
+  implementationPlan    String?   @db.NVarChar(Max)
+  rolloutPlan           String?   @db.NVarChar(Max)
+  rollbackPlan          String?   @db.NVarChar(Max)
+  testResult            String?   @db.NVarChar(20)
+  testAction            String?   @db.NVarChar(50)
+  implementerNotes      String?   @db.NVarChar(Max)
+  versionBefore         String?   @db.NVarChar(100)
+  versionAfter          String?   @db.NVarChar(100)
+  downtimeStart         DateTime?
+  downtimeEnd           DateTime?
+  verificationResult    String?   @db.NVarChar(20)
+  closureReason         String?   @db.NVarChar(Max)
+  emergencyReason       String?   @db.NVarChar(Max)
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  requester          User?             @relation("RequesterRelation", fields: [requesterId], references: [id])
+  assignedTo         User?             @relation("AssignedToRelation", fields: [assignedToId], references: [id])
+  workflowInstance   WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+  approvals          Approval[]
+  attachments        Attachment[]
+
+  @@index([assignedToId])
+  @@index([changeType])
+  @@index([impactLevel])
+  @@index([createdAt])
+  @@index([requesterEmail])
+}
+
+// ─── WorkflowDefinition ───────────────────────────────────────────────────────
+
+model WorkflowDefinition {
+  id            String   @id @default(uuid())
+  name          String   @db.NVarChar(100)
+  versionNumber Int      @default(1)
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  createdById   String
+
+  // Relations
+  createdBy          User                @relation(fields: [createdById], references: [id])
+  steps              WorkflowStep[]
+  conditions         WorkflowCondition[]
+  workflowInstances  WorkflowInstance[]
+}
+
+// ─── WorkflowStep ─────────────────────────────────────────────────────────────
+
+model WorkflowStep {
+  id                     String   @id @default(uuid())
+  workflowDefinitionId   String
+  name                   String   @db.NVarChar(100)
+  stepType               String   @db.NVarChar(30)
+  assignedRole           String   @db.NVarChar(50)
+  requiredFields         Json?
+  sortOrder              Int
+  defaultNextStepId      String?
+  createdAt              DateTime @default(now())
+
+  // Relations
+  workflowDefinition     WorkflowDefinition   @relation(fields: [workflowDefinitionId], references: [id])
+  defaultNextStep        WorkflowStep?        @relation("StepToNextStep", fields: [defaultNextStepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  previousSteps          WorkflowStep[]       @relation("StepToNextStep")
+  conditionsFrom         WorkflowCondition[]  @relation("FromStepRelation")
+  conditionsTo           WorkflowCondition[]  @relation("ToStepRelation")
+  currentInstances       WorkflowInstance[]   @relation("CurrentStepRelation")
+}
+
+// ─── WorkflowCondition ────────────────────────────────────────────────────────
+
+model WorkflowCondition {
+  id                     String @id @default(uuid())
+  workflowDefinitionId   String
+  fromStepId             String
+  toStepId               String
+  fieldName              String @db.NVarChar(100)
+  operator               String @db.NVarChar(20)
+  value                  String @db.NVarChar(255)
+  priority               Int    @default(0)
+
+  // Relations
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+  fromStep           WorkflowStep       @relation("FromStepRelation", fields: [fromStepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  toStep             WorkflowStep       @relation("ToStepRelation", fields: [toStepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// ─── WorkflowInstance ─────────────────────────────────────────────────────────
+
+model WorkflowInstance {
+  id                     String    @id @default(uuid())
+  workflowDefinitionId   String
+  changeRequestId        String?   @unique
+  currentStepId          String
+  status                 String    @db.NVarChar(30)
+  workflowVersion        Int
+  startedAt              DateTime  @default(now())
+  completedAt            DateTime?
+
+  // Relations
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+  changeRequest      ChangeRequest?     @relation(fields: [changeRequestId], references: [id])
+  currentStep        WorkflowStep       @relation("CurrentStepRelation", fields: [currentStepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// ─── Approval ─────────────────────────────────────────────────────────────────
+
+model Approval {
+  id               String   @id @default(uuid())
+  changeRequestId  String
+  approverId       String
+  action           String   @db.NVarChar(20)
+  reason           String?  @db.NVarChar(Max)
+  approverName     String   @db.NVarChar(200)
+  approverPosition String?  @db.NVarChar(200)
+  createdAt        DateTime @default(now())
+
+  // Relations
+  changeRequest ChangeRequest @relation(fields: [changeRequestId], references: [id])
+  approver      User          @relation(fields: [approverId], references: [id])
+
+  @@index([changeRequestId])
+}
+
+// ─── Attachment ───────────────────────────────────────────────────────────────
+
+model Attachment {
+  id               String   @id @default(uuid())
+  changeRequestId  String
+  uploadedById     String
+  fileName         String   @db.NVarChar(255)
+  fileType         String   @db.NVarChar(100)
+  fileSize         Int
+  s3Key            String   @db.NVarChar(500)
+  workflowStep     String?  @db.NVarChar(50)
+  isDeleted        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  // Relations
+  changeRequest ChangeRequest @relation(fields: [changeRequestId], references: [id])
+  uploadedBy    User          @relation(fields: [uploadedById], references: [id])
+
+  @@index([changeRequestId])
+}
+
+// ─── AuditLog ─────────────────────────────────────────────────────────────────
+// IMMUTABLE: No UPDATE or DELETE allowed (enforce at application + DB trigger level)
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  userEmail   String   @db.NVarChar(255)
+  action      String   @db.NVarChar(50)
+  entityType  String   @db.NVarChar(50)
+  entityId    String
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?  @db.NVarChar(45)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String    @db.NVarChar(50)
+  title     String    @db.NVarChar(200)
+  message   String    @db.NVarChar(Max)
+  metadata  Json?
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+}
+
+// ─── MasterData ───────────────────────────────────────────────────────────────
+
+model MasterData {
+  id          String   @id @default(uuid())
+  category    String   @db.NVarChar(50)
+  code        String   @db.NVarChar(50)
+  nameEn      String   @db.NVarChar(200)
+  nameTh      String   @db.NVarChar(200)
+  description String?  @db.NVarChar(Max)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([category, code])
+  @@index([category])
+  @@index([isActive])
+}

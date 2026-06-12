@@ -1,0 +1,27 @@
+# ACR Management System — Testing Override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
+#
+# This override uses ephemeral storage (no volumes) and different ports
+# to avoid conflicting with the local dev environment.
+
+services:
+  mssql:
+    container_name: acr-mssql-test
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-TestPassword123}
+    ports:
+      - "1434:1433"
+    volumes: []
+
+  redis:
+    container_name: acr-redis-test
+    ports:
+      - "6380:6379"
+    volumes: []
+
+  localstack:
+    container_name: acr-localstack-test
+    ports:
+      - "4567:4566"
+    volumes:
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
