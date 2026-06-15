@@ -1,78 +1,65 @@
-import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import SendIcon from '@mui/icons-material/Send';
-import SaveIcon from '@mui/icons-material/Save';
-import { useMasterData } from '@/hooks/useMasterData';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { FileUpload, type IUploadedFile } from './FileUpload';
 
 // ─── Zod Schema ─────────────────────────────────────────────────────────────
 
-const crFormSchema = z
-  .object({
-    // Basic Info
-    changeType: z.enum(['normal', 'emergency'], {
-      required_error: 'Change type is required',
-    }),
-    impactLevel: z.enum(['major', 'high', 'medium', 'low', 'very_low'], {
-      required_error: 'Impact level is required',
-    }),
-    affectedService: z.string().min(1, 'Affected service is required'),
-
-    // Change Details
-    description: z
-      .string()
-      .min(10, 'Description must be at least 10 characters'),
-    justification: z.string().optional(),
-    emergencyReason: z.string().optional(),
-
-    // Requester Info
-    requesterName: z.string().min(1, 'Requester name is required'),
-    requesterEmail: z
-      .string()
-      .min(1, 'Requester email is required')
-      .email('Invalid email format'),
-    requesterDepartment: z.string().optional(),
-
-    // Approver Info
-    approverRequestEmail: z
-      .string()
-      .email('Invalid approver email format')
-      .optional()
-      .or(z.literal('')),
-  })
-  .refine(
-    (data) => {
-      // Emergency reason is required when changeType is emergency
-      if (data.changeType === 'emergency') {
-        return !!data.emergencyReason && data.emergencyReason.trim().length > 0;
-      }
-      return true;
-    },
-    {
-      message: 'Emergency reason is required for emergency changes',
-      path: ['emergencyReason'],
-    },
-  );
+const crFormSchema = z.object({
+  changeType: z.string().min(1, 'Change Type is required'),
+  affectedService: z.string().min(1, 'Affected Service is required'),
+  businessPriority: z.enum(['low', 'medium', 'high', 'urgent'], {
+    required_error: 'Business Priority is required',
+  }),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  justification: z.string().min(10, 'Business Justification must be at least 10 characters'),
+  requesterName: z.string().min(1, 'Name is required'),
+  requesterEmail: z.string().email('Valid email required'),
+  requesterDepartment: z.string().optional(),
+  approverRequestEmail: z.string().email('Valid approver email required'),
+});
 
 export type CRFormValues = z.infer<typeof crFormSchema>;
+
+// ─── Options ────────────────────────────────────────────────────────────────
+
+const CHANGE_TYPE_OPTIONS = [
+  { value: 'application', label: 'Application' },
+  { value: 'hardware', label: 'Hardware' },
+  { value: 'network', label: 'Network' },
+  { value: 'server', label: 'Server' },
+  { value: 'firewall', label: 'Firewall' },
+  { value: 'os', label: 'OS' },
+  { value: 'vpn', label: 'VPN' },
+  { value: 'internet_wifi', label: 'Internet/Wi-Fi' },
+  { value: 'active_directory', label: 'Active Directory' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+const BUSINESS_PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low', color: '#4caf50' },
+  { value: 'medium', label: 'Medium', color: '#ff9800' },
+  { value: 'high', label: 'High', color: '#f44336' },
+  { value: 'urgent', label: 'Urgent', color: '#9c27b0' },
+] as const;
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface CRFormProps {
-  /** Mode: create or edit */
-  mode: 'create' | 'edit';
-  /** Default values for edit mode */
+  /** Default values for pre-filled data */
   defaultValues?: Partial<CRFormValues>;
   /** Existing attachments for edit mode */
   existingFiles?: IUploadedFile[];
@@ -86,30 +73,66 @@ interface CRFormProps {
   submitError?: string | null;
 }
 
-// ─── Impact Level Labels ────────────────────────────────────────────────────
+// ─── Section Header ─────────────────────────────────────────────────────────
 
-const IMPACT_LEVEL_OPTIONS = [
-  { value: 'major', label: 'Major — ผลกระทบรุนแรง' },
-  { value: 'high', label: 'High — ผลกระทบสูง' },
-  { value: 'medium', label: 'Medium — ผลกระทบปานกลาง' },
-  { value: 'low', label: 'Low — ผลกระทบต่ำ' },
-  { value: 'very_low', label: 'Very Low — ผลกระทบน้อยมาก' },
-] as const;
-
-const CHANGE_TYPE_OPTIONS = [
-  { value: 'normal', label: 'Normal Change — การเปลี่ยนแปลงปกติ' },
-  { value: 'emergency', label: 'Emergency Change — การเปลี่ยนแปลงเร่งด่วน' },
-] as const;
+function SectionHeader({
+  number,
+  title,
+  description,
+  icon,
+}: {
+  number: number;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}): JSX.Element {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
+      <Box
+        sx={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          bgcolor: 'primary.main',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: '0.875rem',
+          flexShrink: 0,
+          mt: 0.25,
+        }}
+      >
+        {number}
+      </Box>
+      <Box sx={{ flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {icon}
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+            {title}
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {description}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 /**
- * Reusable CR form component for create and edit modes.
+ * Create Change Request form with 3 clear sections:
+ * 1. Change Information
+ * 2. Change Details
+ * 3. Requester Information
+ *
  * Uses React Hook Form + Zod for validation.
- * Anonymous-friendly (no login required).
+ * Designed for anonymous use (no login required).
  */
 export function CRForm({
-  mode,
   defaultValues,
   existingFiles = [],
   changeRequestId,
@@ -117,23 +140,18 @@ export function CRForm({
   onSubmit,
   submitError,
 }: CRFormProps): JSX.Element {
-  const { services, isLoading: isLoadingMasterData } = useMasterData();
-
   const {
     control,
     handleSubmit,
-    watch,
     formState: { errors },
-    reset,
   } = useForm<CRFormValues>({
     resolver: zodResolver(crFormSchema),
     defaultValues: {
-      changeType: 'normal',
-      impactLevel: undefined,
+      changeType: '',
       affectedService: '',
+      businessPriority: undefined,
       description: '',
       justification: '',
-      emergencyReason: '',
       requesterName: '',
       requesterEmail: '',
       requesterDepartment: '',
@@ -141,28 +159,6 @@ export function CRForm({
       ...defaultValues,
     },
   });
-
-  // Watch changeType to conditionally show emergency reason
-  const changeType = watch('changeType');
-
-  // Reset form when defaultValues change (e.g., fetched data in edit mode)
-  useEffect(() => {
-    if (defaultValues) {
-      reset({
-        changeType: 'normal',
-        impactLevel: undefined,
-        affectedService: '',
-        description: '',
-        justification: '',
-        emergencyReason: '',
-        requesterName: '',
-        requesterEmail: '',
-        requesterDepartment: '',
-        approverRequestEmail: '',
-        ...defaultValues,
-      });
-    }
-  }, [defaultValues, reset]);
 
   // Track uploaded files
   let uploadedFiles: IUploadedFile[] = existingFiles;
@@ -180,272 +176,291 @@ export function CRForm({
       component="form"
       onSubmit={handleSubmit(handleFormSubmit)}
       noValidate
-      sx={{ maxWidth: 800 }}
+      sx={{ maxWidth: 900 }}
     >
       {submitError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
           {submitError}
         </Alert>
       )}
 
-      {/* Section 1: Basic Info */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          ข้อมูลพื้นฐาน (Basic Info)
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-
-        <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Change Type */}
-          <Controller
-            name="changeType"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                label="Change Type *"
-                fullWidth
-                error={!!errors.changeType}
-                helperText={errors.changeType?.message}
-              >
-                {CHANGE_TYPE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
+      {/* ─── Section 1: Change Information ─────────────────────────────── */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+          <SectionHeader
+            number={1}
+            title="Change Information"
+            description="Select the type, affected service, and priority of this change request."
+            icon={<InfoOutlinedIcon color="primary" fontSize="small" />}
           />
 
-          {/* Impact Level */}
-          <Controller
-            name="impactLevel"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                label="Impact Level *"
-                fullWidth
-                error={!!errors.impactLevel}
-                helperText={errors.impactLevel?.message}
-              >
-                {IMPACT_LEVEL_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-
-          {/* Affected Service */}
-          <Controller
-            name="affectedService"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select={services.length > 0}
-                label="Affected Service *"
-                fullWidth
-                error={!!errors.affectedService}
-                helperText={
-                  errors.affectedService?.message ??
-                  (isLoadingMasterData ? 'Loading services...' : undefined)
-                }
-                disabled={isLoadingMasterData}
-              >
-                {services.length > 0 ? (
-                  services.map((service) => (
-                    <MenuItem key={service.id} value={service.code}>
-                      {service.nameTh || service.nameEn}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem value="" disabled>
-                    No services available
-                  </MenuItem>
-                )}
-              </TextField>
-            )}
-          />
-        </Box>
-      </Paper>
-
-      {/* Section 2: Change Details */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          รายละเอียดการเปลี่ยนแปลง (Change Details)
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-
-        <Box className="flex flex-col gap-4">
-          {/* Description */}
-          <Controller
-            name="description"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Description *"
-                multiline
-                rows={4}
-                fullWidth
-                placeholder="Describe the change request in detail..."
-                error={!!errors.description}
-                helperText={errors.description?.message}
-              />
-            )}
-          />
-
-          {/* Justification */}
-          <Controller
-            name="justification"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Justification"
-                multiline
-                rows={3}
-                fullWidth
-                placeholder="Why is this change needed?"
-                error={!!errors.justification}
-                helperText={errors.justification?.message}
-              />
-            )}
-          />
-
-          {/* Emergency Reason (conditional) */}
-          {changeType === 'emergency' && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: 3,
+            }}
+          >
+            {/* Change Type */}
             <Controller
-              name="emergencyReason"
+              name="changeType"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Emergency Reason *"
-                  multiline
-                  rows={3}
+                  select
+                  label="Change Type"
+                  required
                   fullWidth
-                  placeholder="Explain why this is an emergency change..."
-                  error={!!errors.emergencyReason}
-                  helperText={errors.emergencyReason?.message}
+                  error={!!errors.changeType}
+                  helperText={errors.changeType?.message}
+                >
+                  {CHANGE_TYPE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+
+            {/* Business Priority */}
+            <Controller
+              name="businessPriority"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Business Priority"
+                  required
+                  fullWidth
+                  error={!!errors.businessPriority}
+                  helperText={errors.businessPriority?.message}
+                >
+                  {BUSINESS_PRIORITY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: option.color,
+                          }}
+                        />
+                        {option.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+
+            {/* Affected Service — full width */}
+            <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+              <Controller
+                name="affectedService"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Affected Service"
+                    required
+                    fullWidth
+                    placeholder="e.g., Email System, ERP, HR Portal"
+                    error={!!errors.affectedService}
+                    helperText={errors.affectedService?.message}
+                  />
+                )}
+              />
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* ─── Section 2: Change Details ─────────────────────────────────── */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+          <SectionHeader
+            number={2}
+            title="Change Details"
+            description="Provide a detailed description, business justification, and any supporting documents."
+            icon={<DescriptionOutlinedIcon color="primary" fontSize="small" />}
+          />
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Description */}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Description"
+                  required
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe what needs to be changed and why..."
+                  error={!!errors.description}
+                  helperText={errors.description?.message}
                 />
               )}
             />
-          )}
-        </Box>
-      </Paper>
 
-      {/* Section 3: Requester Info */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          ข้อมูลผู้ร้องขอ (Requester Info)
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-
-        <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Requester Name */}
-          <Controller
-            name="requesterName"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Name *"
-                fullWidth
-                error={!!errors.requesterName}
-                helperText={errors.requesterName?.message}
-              />
-            )}
-          />
-
-          {/* Requester Email */}
-          <Controller
-            name="requesterEmail"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Email *"
-                type="email"
-                fullWidth
-                error={!!errors.requesterEmail}
-                helperText={errors.requesterEmail?.message}
-              />
-            )}
-          />
-
-          {/* Requester Department */}
-          <Controller
-            name="requesterDepartment"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Department"
-                fullWidth
-                error={!!errors.requesterDepartment}
-                helperText={errors.requesterDepartment?.message}
-              />
-            )}
-          />
-        </Box>
-      </Paper>
-
-      {/* Section 4: Approver Info */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          ข้อมูลผู้อนุมัติ (Approver Info)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          ระบุ email หัวหน้า/ผู้อนุมัติเบื้องต้น — ระบบจะส่ง email
-          ขออนุมัติไปยังผู้อนุมัตินี้
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-
-        <Controller
-          name="approverRequestEmail"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Approver Email"
-              type="email"
-              fullWidth
-              placeholder="supervisor@company.co.th"
-              error={!!errors.approverRequestEmail}
-              helperText={
-                errors.approverRequestEmail?.message ??
-                'ระบบจะส่ง email ขออนุมัติไปยังผู้อนุมัตินี้ (Pre-approval flow)'
-              }
+            {/* Business Justification */}
+            <Controller
+              name="justification"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Business Justification"
+                  required
+                  multiline
+                  rows={3}
+                  fullWidth
+                  placeholder="Explain the business need and expected benefits..."
+                  error={!!errors.justification}
+                  helperText={errors.justification?.message}
+                />
+              )}
             />
-          )}
-        />
-      </Paper>
 
-      {/* Section 5: Attachments */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          เอกสารแนบ (Attachments)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          แนบเอกสารประกอบการขอเปลี่ยนแปลง (ถ้ามี)
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
+            {/* Attachments */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                Attachments (Optional)
+              </Typography>
+              <FileUpload
+                existingFiles={existingFiles}
+                onChange={handleFilesChange}
+                changeRequestId={changeRequestId}
+              />
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
-        <FileUpload
-          existingFiles={existingFiles}
-          onChange={handleFilesChange}
-          changeRequestId={changeRequestId}
-        />
-      </Paper>
+      {/* ─── Section 3: Requester Information ──────────────────────────── */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 4,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+          <SectionHeader
+            number={3}
+            title="Requester Information"
+            description="Your contact details and the approver who will review this request."
+            icon={<PersonOutlineIcon color="primary" fontSize="small" />}
+          />
 
-      {/* Submit Button */}
-      <Box className="flex justify-end gap-3">
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: 3,
+            }}
+          >
+            {/* Name */}
+            <Controller
+              name="requesterName"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Name"
+                  required
+                  fullWidth
+                  placeholder="Your full name"
+                  error={!!errors.requesterName}
+                  helperText={errors.requesterName?.message}
+                />
+              )}
+            />
+
+            {/* Email */}
+            <Controller
+              name="requesterEmail"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Email"
+                  type="email"
+                  required
+                  fullWidth
+                  placeholder="your.email@company.co.th"
+                  error={!!errors.requesterEmail}
+                  helperText={errors.requesterEmail?.message}
+                />
+              )}
+            />
+
+            {/* Department */}
+            <Controller
+              name="requesterDepartment"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Department"
+                  fullWidth
+                  placeholder="e.g., IT, HR, Finance"
+                  error={!!errors.requesterDepartment}
+                  helperText={errors.requesterDepartment?.message}
+                />
+              )}
+            />
+
+            {/* Approver Email */}
+            <Controller
+              name="approverRequestEmail"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Approver Email"
+                  type="email"
+                  required
+                  fullWidth
+                  placeholder="supervisor@company.co.th"
+                  error={!!errors.approverRequestEmail}
+                  helperText={
+                    errors.approverRequestEmail?.message ??
+                    'Approval request will be sent to this email'
+                  }
+                />
+              )}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* ─── Submit Button ─────────────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           type="submit"
           variant="contained"
@@ -454,18 +469,20 @@ export function CRForm({
           startIcon={
             isSubmitting ? (
               <CircularProgress size={20} color="inherit" />
-            ) : mode === 'create' ? (
-              <SendIcon />
             ) : (
-              <SaveIcon />
+              <SendIcon />
             )
           }
+          sx={{
+            px: 4,
+            py: 1.5,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '1rem',
+          }}
         >
-          {isSubmitting
-            ? 'กำลังบันทึก...'
-            : mode === 'create'
-              ? 'ส่งคำขอ (Submit)'
-              : 'บันทึก (Save)'}
+          {isSubmitting ? 'Submitting...' : 'Submit Change Request'}
         </Button>
       </Box>
     </Box>

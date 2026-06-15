@@ -4,6 +4,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
+import Chip from '@mui/material/Chip';
+import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined';
 import { CRForm, type CRFormValues } from '../components/CRForm';
 import { createChangeRequest } from '@/services/change-request.api';
 import type { IUploadedFile } from '../components/FileUpload';
@@ -12,7 +14,10 @@ import type { IUploadedFile } from '../components/FileUpload';
  * Create Change Request page.
  *
  * This page is publicly accessible (anonymous mode — no login required).
- * Uses the reusable CRForm component with React Hook Form + Zod validation.
+ * Uses the redesigned CRForm component with 3 sections:
+ * 1. Change Information
+ * 2. Change Details
+ * 3. Requester Information
  *
  * Flow:
  * 1. User fills multi-section form
@@ -41,33 +46,33 @@ export function Component(): JSX.Element {
 
       const result = await createChangeRequest({
         changeType: values.changeType,
-        impactLevel: values.impactLevel,
+        businessPriority: values.businessPriority,
         affectedService: values.affectedService,
         description: values.description,
-        justification: values.justification || undefined,
+        justification: values.justification,
         requesterName: values.requesterName,
         requesterEmail: values.requesterEmail,
         requesterDepartment: values.requesterDepartment || undefined,
-        approverRequestEmail: values.approverRequestEmail || undefined,
-        emergencyReason: values.emergencyReason || undefined,
+        approverRequestEmail: values.approverRequestEmail,
         attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
       });
 
       setSuccessMessage(
-        `คำขอเปลี่ยนแปลงถูกสร้างเรียบร้อย (CR: ${result.crNumber})`,
+        `Change Request created successfully (CR: ${result.crNumber})`,
       );
 
       // If tracking token is provided, navigate to tracking page
-      if (result.trackingToken) {
+      const trackingToken = (result as unknown as { trackingToken?: string }).trackingToken;
+      if (trackingToken) {
         setTimeout(() => {
-          navigate(`/tracking/${result.trackingToken}`);
+          navigate(`/tracking/${trackingToken}`);
         }, 2000);
       }
     } catch (err) {
       if (err instanceof Error) {
         setSubmitError(err.message);
       } else {
-        setSubmitError('เกิดข้อผิดพลาดในการสร้างคำขอ กรุณาลองใหม่อีกครั้ง');
+        setSubmitError('An error occurred while creating the request. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -75,19 +80,29 @@ export function Component(): JSX.Element {
   };
 
   return (
-    <Box className="max-w-4xl mx-auto py-6 px-4">
+    <Box sx={{ maxWidth: 960, mx: 'auto', py: { xs: 3, md: 5 }, px: { xs: 2, md: 4 } }}>
+      {/* Page Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          สร้างคำขอเปลี่ยนแปลง (Create Change Request)
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          กรอกข้อมูลด้านล่างเพื่อส่งคำขอเปลี่ยนแปลง/แก้ไขระบบ — ไม่จำเป็นต้อง
-          Login
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <NoteAddOutlinedIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ fontWeight: 700 }}
+          >
+            Create Change Request
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
+          <Typography variant="body1" color="text.secondary">
+            Fill in the form below to submit a change request. No login required.
+          </Typography>
+          <Chip label="Anonymous" size="small" variant="outlined" color="info" />
+        </Box>
       </Box>
 
+      {/* Form */}
       <CRForm
-        mode="create"
         isSubmitting={isSubmitting}
         onSubmit={handleSubmit}
         submitError={submitError}
@@ -104,6 +119,7 @@ export function Component(): JSX.Element {
           severity="success"
           onClose={() => setSuccessMessage(null)}
           variant="filled"
+          sx={{ borderRadius: 2 }}
         >
           {successMessage}
         </Alert>

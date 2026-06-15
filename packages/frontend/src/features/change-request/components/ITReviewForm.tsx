@@ -3,10 +3,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import SendIcon from '@mui/icons-material/Send';
@@ -14,27 +15,45 @@ import SendIcon from '@mui/icons-material/Send';
 // ─── Zod Schema ─────────────────────────────────────────────────────────────
 
 const itReviewSchema = z.object({
+  impactLevel: z.enum(['major', 'high', 'medium', 'low', 'very_low'], {
+    required_error: 'Impact Level is required',
+  }),
+  riskLevel: z.enum(['critical', 'high', 'medium', 'low'], {
+    required_error: 'Risk Level is required',
+  }),
   impactAnalysis: z
     .string()
-    .min(10, 'Impact analysis must be at least 10 characters'),
-  riskAssessment: z
-    .string()
-    .min(10, 'Risk assessment must be at least 10 characters'),
+    .min(10, 'Impact Analysis must be at least 10 characters'),
   implementationPlan: z
     .string()
-    .min(10, 'Implementation plan must be at least 10 characters'),
-  rolloutPlan: z
-    .string()
-    .min(10, 'Rollout plan must be at least 10 characters'),
+    .min(10, 'Implementation Plan must be at least 10 characters'),
   rollbackPlan: z
     .string()
-    .min(10, 'Rollback plan must be at least 10 characters'),
-  testResult: z
+    .min(10, 'Rollback Plan must be at least 10 characters'),
+  testingPlan: z
     .string()
-    .min(10, 'Test result must be at least 10 characters'),
+    .min(10, 'Testing Plan must be at least 10 characters'),
+  estimatedDowntime: z.string().optional(),
 });
 
 export type ITReviewFormValues = z.infer<typeof itReviewSchema>;
+
+// ─── Options ────────────────────────────────────────────────────────────────
+
+const IMPACT_LEVEL_OPTIONS = [
+  { value: 'major', label: 'Major', color: '#d32f2f' },
+  { value: 'high', label: 'High', color: '#f44336' },
+  { value: 'medium', label: 'Medium', color: '#ff9800' },
+  { value: 'low', label: 'Low', color: '#4caf50' },
+  { value: 'very_low', label: 'Very Low', color: '#81c784' },
+] as const;
+
+const RISK_LEVEL_OPTIONS = [
+  { value: 'critical', label: 'Critical', color: '#9c27b0' },
+  { value: 'high', label: 'High', color: '#f44336' },
+  { value: 'medium', label: 'Medium', color: '#ff9800' },
+  { value: 'low', label: 'Low', color: '#4caf50' },
+] as const;
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -53,8 +72,17 @@ interface ITReviewFormProps {
 
 /**
  * IT Review form component.
- * Allows IT reviewers to fill in Impact Analysis, Risk Assessment,
- * Implementation/Rollout/Rollback Plans, and Test Results.
+ * Allows IT reviewers to assess impact, risk, and provide planning details
+ * for a change request.
+ *
+ * Fields:
+ * - Impact Level (dropdown)
+ * - Risk Level (dropdown)
+ * - Impact Analysis (textarea)
+ * - Implementation Plan (textarea)
+ * - Rollback Plan (textarea)
+ * - Testing Plan (textarea)
+ * - Estimated Downtime (text input, optional)
  */
 export function ITReviewForm({
   defaultValues,
@@ -69,12 +97,13 @@ export function ITReviewForm({
   } = useForm<ITReviewFormValues>({
     resolver: zodResolver(itReviewSchema),
     defaultValues: {
+      impactLevel: undefined,
+      riskLevel: undefined,
       impactAnalysis: '',
-      riskAssessment: '',
       implementationPlan: '',
-      rolloutPlan: '',
       rollbackPlan: '',
-      testResult: '',
+      testingPlan: '',
+      estimatedDowntime: '',
       ...defaultValues,
     },
   });
@@ -87,172 +116,232 @@ export function ITReviewForm({
       sx={{ maxWidth: 900 }}
     >
       {submitError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
           {submitError}
         </Alert>
       )}
 
-      {/* Impact Analysis */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          การวิเคราะห์ผลกระทบ (Impact Analysis)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุผลกระทบที่อาจเกิดขึ้นจากการเปลี่ยนแปลงนี้ต่อระบบ ผู้ใช้
-          และบริการที่เกี่ยวข้อง
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="impactAnalysis"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="Describe the impact on systems, users, and related services..."
-              error={!!errors.impactAnalysis}
-              helperText={errors.impactAnalysis?.message}
-            />
-          )}
-        />
-      </Paper>
+      {/* ─── Assessment Section ────────────────────────────────────────── */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 600, color: 'primary.main', mb: 0.5 }}
+          >
+            Assessment
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Evaluate the impact and risk level of this change request.
+          </Typography>
 
-      {/* Risk Assessment */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          การประเมินความเสี่ยง (Risk Assessment)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุความเสี่ยงที่เกี่ยวข้อง ระดับความรุนแรง
-          และมาตรการบรรเทาความเสี่ยง
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="riskAssessment"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="Identify risks, severity levels, and mitigation measures..."
-              error={!!errors.riskAssessment}
-              helperText={errors.riskAssessment?.message}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: 3,
+            }}
+          >
+            {/* Impact Level */}
+            <Controller
+              name="impactLevel"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Impact Level"
+                  required
+                  fullWidth
+                  error={!!errors.impactLevel}
+                  helperText={errors.impactLevel?.message}
+                >
+                  {IMPACT_LEVEL_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: option.color,
+                          }}
+                        />
+                        {option.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
             />
-          )}
-        />
-      </Paper>
 
-      {/* Implementation Plan */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          แผนการดำเนินการ (Implementation Plan)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุขั้นตอนการดำเนินการเปลี่ยนแปลงอย่างละเอียด
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="implementationPlan"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="List the step-by-step implementation procedure..."
-              error={!!errors.implementationPlan}
-              helperText={errors.implementationPlan?.message}
+            {/* Risk Level */}
+            <Controller
+              name="riskLevel"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Risk Level"
+                  required
+                  fullWidth
+                  error={!!errors.riskLevel}
+                  helperText={errors.riskLevel?.message}
+                >
+                  {RISK_LEVEL_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: option.color,
+                          }}
+                        />
+                        {option.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
             />
-          )}
-        />
-      </Paper>
+          </Box>
 
-      {/* Rollout Plan */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          แผนการนำขึ้น Production (Rollout Plan)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุแผนการนำการเปลี่ยนแปลงขึ้นระบบจริง รวมถึงกำหนดเวลาและผู้รับผิดชอบ
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="rolloutPlan"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="Detail the rollout schedule, responsible parties, and deployment steps..."
-              error={!!errors.rolloutPlan}
-              helperText={errors.rolloutPlan?.message}
+          {/* Impact Analysis */}
+          <Box sx={{ mt: 3 }}>
+            <Controller
+              name="impactAnalysis"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Impact Analysis"
+                  required
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe the impact on systems, users, and related services..."
+                  error={!!errors.impactAnalysis}
+                  helperText={errors.impactAnalysis?.message}
+                />
+              )}
             />
-          )}
-        />
-      </Paper>
+          </Box>
+        </CardContent>
+      </Card>
 
-      {/* Rollback Plan */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          แผนการย้อนกลับ (Rollback Plan)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุขั้นตอนการย้อนกลับหากการเปลี่ยนแปลงล้มเหลวหรือเกิดปัญหา
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="rollbackPlan"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="Describe the rollback procedure if the change fails..."
-              error={!!errors.rollbackPlan}
-              helperText={errors.rollbackPlan?.message}
+      {/* ─── Planning Section ──────────────────────────────────────────── */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 600, color: 'primary.main', mb: 0.5 }}
+          >
+            Planning
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Provide implementation, rollback, and testing plans for this change.
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Implementation Plan */}
+            <Controller
+              name="implementationPlan"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Implementation Plan"
+                  required
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="List the step-by-step implementation procedure..."
+                  error={!!errors.implementationPlan}
+                  helperText={errors.implementationPlan?.message}
+                />
+              )}
             />
-          )}
-        />
-      </Paper>
 
-      {/* Test Result */}
-      <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          ผลการทดสอบ (Test Result)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ระบุผลการทดสอบการเปลี่ยนแปลง รวมถึงสภาพแวดล้อม กรณีทดสอบ
-          และผลลัพธ์ที่ได้
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Controller
-          name="testResult"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              multiline
-              rows={5}
-              fullWidth
-              placeholder="Document test environment, test cases, and results..."
-              error={!!errors.testResult}
-              helperText={errors.testResult?.message}
+            {/* Rollback Plan */}
+            <Controller
+              name="rollbackPlan"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Rollback Plan"
+                  required
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe the rollback procedure if the change fails..."
+                  error={!!errors.rollbackPlan}
+                  helperText={errors.rollbackPlan?.message}
+                />
+              )}
             />
-          )}
-        />
-      </Paper>
 
-      {/* Submit Button */}
-      <Box className="flex justify-end">
+            {/* Testing Plan */}
+            <Controller
+              name="testingPlan"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Testing Plan"
+                  required
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe the testing strategy, test cases, and acceptance criteria..."
+                  error={!!errors.testingPlan}
+                  helperText={errors.testingPlan?.message}
+                />
+              )}
+            />
+
+            {/* Estimated Downtime */}
+            <Controller
+              name="estimatedDowntime"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Estimated Downtime"
+                  fullWidth
+                  placeholder='e.g., "2 hours", "No downtime expected"'
+                  error={!!errors.estimatedDowntime}
+                  helperText={
+                    errors.estimatedDowntime?.message ??
+                    'Optional — estimated service downtime during implementation'
+                  }
+                />
+              )}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* ─── Submit Button ─────────────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           type="submit"
           variant="contained"
@@ -265,10 +354,16 @@ export function ITReviewForm({
               <SendIcon />
             )
           }
+          sx={{
+            px: 4,
+            py: 1.5,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '1rem',
+          }}
         >
-          {isSubmitting
-            ? 'กำลังส่ง...'
-            : 'ส่งเพื่อขออนุมัติ (Submit for Approval)'}
+          {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
         </Button>
       </Box>
     </Box>
